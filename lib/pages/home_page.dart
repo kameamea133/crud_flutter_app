@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:my_first_flutter_app/services/firestore.dart';
+import 'package:crud_flutter_app/services/firestore.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,29 +10,34 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  //firestore
   final FirestoreService firestoreService = FirestoreService();
-
-  // text controller
   final TextEditingController textController = TextEditingController();
 
-  // open dialog vox to add a note
-  void openNoteBox() {
+  void openNoteBox({String? docID}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         content: TextField(
           controller: textController,
+          decoration: const InputDecoration(
+            labelText: "Write your note",
+            border: OutlineInputBorder(),
+          ),
         ),
         actions: [
           ElevatedButton(
             onPressed: () {
-              firestoreService.addNote(textController.text);
+              if (docID == null) {
+                firestoreService.addNote(textController.text);
+              } else {
+                firestoreService.updateNote(docID, textController.text);
+              }
+
               textController.clear();
               Navigator.pop(context);
             },
-            child: Text("Add"),
-          )
+            child: const Text("Save"),
+          ),
         ],
       ),
     );
@@ -42,22 +47,25 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[200],
-      appBar: AppBar(backgroundColor: Colors.lightBlueAccent,  title: Center(
-        child: Text(
-          "Notes",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20, //
+      appBar: AppBar(
+        backgroundColor: Colors.lightBlueAccent,
+        title: const Center(
+          child: Text(
+            "Notes",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
           ),
         ),
-      ),
-        elevation: 0, //
+        elevation: 0,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: openNoteBox,
         backgroundColor: Colors.lightBlueAccent,
-        child: const Icon(Icons.add,
+        child: const Icon(
+          Icons.add,
           color: Colors.white,
         ),
       ),
@@ -74,20 +82,33 @@ class _HomePageState extends State<HomePage> {
                 String docID = document.id;
 
                 Map<String, dynamic> data =
-                    document.data() as Map<String, dynamic>;
+                document.data() as Map<String, dynamic>;
                 String noteText = data['note'];
 
                 return ListTile(
                   title: Text(noteText),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () => openNoteBox(docID: docID),
+                        icon: const Icon(Icons.settings),
+                      ),
+                      IconButton(
+                        onPressed: () => firestoreService.deleteNote(docID),
+                        icon: const Icon(Icons.delete),
+                      ),
+                    ],
+                  ),
                 );
               },
             );
-
+          } else if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else {
+            return const Center(child: Text("No notes..."));
           }
-          else {
-            return const Text("No notes...");
-          }
-        }
+        },
       ),
     );
   }
